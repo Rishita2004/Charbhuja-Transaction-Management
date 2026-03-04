@@ -7,14 +7,21 @@ from database import get_db
 router = APIRouter(prefix="/dispatches", tags=["dispatches"])
 
 
-def compute_status(quantity_ordered: float, quantity_sent: float) -> str:
+def get_tolerance_percent(unit_type: str) -> float:
+    unit = (unit_type or "").strip().lower()
+    return 5.0 if unit == "ton" else 0.0
+
+
+def compute_status(quantity_ordered: float, quantity_sent: float, unit_type: str) -> str:
     if quantity_sent == 0:
         return "Pending"
-    if quantity_sent >= quantity_ordered * 0.9 and quantity_sent <= quantity_ordered * 1.1:
-        return "Completed"
-    if quantity_sent < quantity_ordered:
+    if quantity_ordered == 0:
         return "Partial"
-    # Over-dispatched beyond 10% tolerance
+
+    deviation = ((quantity_sent - quantity_ordered) / quantity_ordered) * 100
+    tolerance = get_tolerance_percent(unit_type)
+    if -tolerance <= deviation <= tolerance:
+        return "Completed"
     return "Partial"
 
 
@@ -47,7 +54,7 @@ def add_dispatch(payload: schemas.DispatchCreate, db: Session = Depends(get_db))
     # Update order
     order.quantity_sent = new_cumulative
     order.remaining_quantity = new_remaining
-    order.status = compute_status(order.quantity_ordered, new_cumulative)
+    order.status = compute_status(order.quantity_ordered, new_cumulative, order.unit_type)
 
     db.commit()
     db.refresh(dispatch)
@@ -74,6 +81,6 @@ def delete_dispatch(dispatch_id: int, db: Session = Depends(get_db)):
 
     order.quantity_sent = cumulative
     order.remaining_quantity = order.quantity_ordered - cumulative
-    order.status = compute_status(order.quantity_ordered, cumulative)
+    order.status = compute_status(order.quantity_ordered, cumulative, order.unit_type)
 
     db.commit()
