@@ -20,21 +20,24 @@ def generate_order_id(db: Session) -> str:
     count = db.query(models.Order).count()
     return f"ORD-{str(count + 1).zfill(4)}"
 
-def compute_status(quantity_ordered: float, quantity_sent: float, unit_type: str) -> str:
+def compute_status(quantity_ordered: float, quantity_sent: float) -> str:
     if quantity_sent == 0:
         return "Pending"
-    
-    if unit_type == "Ton":
-        deviation = ((quantity_sent - quantity_ordered) / quantity_ordered) * 100
-        if -5 <= deviation <= 5:
+    deviation = ((quantity_sent - quantity_ordered) / quantity_ordered) * 100
+    if -10 <= deviation <= 10 and quantity_sent > 0:
+        # Could be "Completed" if deviation is within tolerance after final dispatch
+        if quantity_sent >= quantity_ordered * 0.9:
             return "Completed"
-    else:
-        # For Trucks or other units, require exact match
-        if quantity_sent == quantity_ordered:
-            return "Completed"
-
     if 0 < quantity_sent < quantity_ordered:
-        return "Partial"
+        deviation_from_ordered = ((quantity_sent - quantity_ordered) / quantity_ordered) * 100
+        if deviation_from_ordered < -10:
+            return "Partial"
+    if quantity_sent >= quantity_ordered:
+        deviation = ((quantity_sent - quantity_ordered) / quantity_ordered) * 100
+        if -10 <= deviation <= 10:
+            return "Completed"
+        else:
+            return "Partial"
     return "Partial"
 
 
@@ -114,7 +117,7 @@ def update_order(order_id: int, payload: schemas.OrderUpdate, db: Session = Depe
     # Recalculate derived fields
     order.total_price = order.quantity_ordered * order.price_per_unit
     order.remaining_quantity = order.quantity_ordered - order.quantity_sent
-    order.status = compute_status(order.quantity_ordered, order.quantity_sent, order.unit_type)
+    order.status = compute_status(order.quantity_ordered, order.quantity_sent)
 
     db.commit()
     db.refresh(order)
