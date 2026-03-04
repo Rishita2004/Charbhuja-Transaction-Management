@@ -7,20 +7,14 @@ from database import get_db
 router = APIRouter(prefix="/dispatches", tags=["dispatches"])
 
 
-def compute_status(quantity_ordered: float, quantity_sent: float, unit_type: str) -> str:
+def compute_status(quantity_ordered: float, quantity_sent: float) -> str:
     if quantity_sent == 0:
         return "Pending"
-    
-    if unit_type == "Ton":
-        if quantity_sent >= quantity_ordered * 0.9 and quantity_sent <= quantity_ordered * 1.1:
-            return "Completed"
-    else:
-        # For Trucks or other units, require exact match
-        if quantity_sent == quantity_ordered:
-            return "Completed"
-            
+    if quantity_sent >= quantity_ordered * 0.9 and quantity_sent <= quantity_ordered * 1.1:
+        return "Completed"
     if quantity_sent < quantity_ordered:
         return "Partial"
+    # Over-dispatched beyond 10% tolerance
     return "Partial"
 
 
@@ -53,7 +47,7 @@ def add_dispatch(payload: schemas.DispatchCreate, db: Session = Depends(get_db))
     # Update order
     order.quantity_sent = new_cumulative
     order.remaining_quantity = new_remaining
-    order.status = compute_status(order.quantity_ordered, new_cumulative, order.unit_type)
+    order.status = compute_status(order.quantity_ordered, new_cumulative)
 
     db.commit()
     db.refresh(dispatch)
@@ -80,6 +74,6 @@ def delete_dispatch(dispatch_id: int, db: Session = Depends(get_db)):
 
     order.quantity_sent = cumulative
     order.remaining_quantity = order.quantity_ordered - cumulative
-    order.status = compute_status(order.quantity_ordered, cumulative, order.unit_type)
+    order.status = compute_status(order.quantity_ordered, cumulative)
 
     db.commit()
