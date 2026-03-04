@@ -12,6 +12,11 @@ from database import get_db
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
+def get_tolerance_percent(unit_type: str) -> float:
+    unit = (unit_type or "").strip().lower()
+    return 5.0 if unit == "ton" else 0.0
+
+
 @router.get("/summary", response_model=schemas.DashboardSummary)
 def get_summary(db: Session = Depends(get_db)):
     orders = db.query(models.Order).all()
@@ -39,7 +44,8 @@ def get_tolerance_log(db: Session = Depends(get_db)):
         if o.quantity_ordered == 0:
             continue
         deviation = ((o.quantity_sent - o.quantity_ordered) / o.quantity_ordered) * 100
-        within = -5 <= deviation <= 5
+        tolerance = get_tolerance_percent(o.unit_type)
+        within = -tolerance <= deviation <= tolerance
         result.append(schemas.ToleranceLogEntry(
             order_id=o.order_id,
             broker=o.broker_name,
@@ -118,7 +124,8 @@ def export_excel(db: Session = Depends(get_db)):
         if o.quantity_ordered == 0:
             continue
         deviation = round(((o.quantity_sent - o.quantity_ordered) / o.quantity_ordered) * 100, 2)
-        within = -10 <= deviation <= 10
+        tolerance = get_tolerance_percent(o.unit_type)
+        within = -tolerance <= deviation <= tolerance
         sign = "+" if deviation >= 0 else ""
         row_data = [
             o.order_id, o.broker_name, o.item_name, o.quantity_ordered,
