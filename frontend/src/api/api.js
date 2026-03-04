@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = axios.create({ baseURL: "http://localhost:8000" });
+const API_URL = "https://charbhuja-api.onrender.com";
 
 export const fetchOrders = (params) => API.get("/orders/", { params });
 export const createOrder = (data) => API.post("/orders/", data);
