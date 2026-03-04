@@ -124,7 +124,7 @@ def export_excel(db: Session = Depends(get_db)):
         if o.quantity_ordered == 0:
             continue
         deviation = round(((o.quantity_sent - o.quantity_ordered) / o.quantity_ordered) * 100, 2)
-        within = -2 <= deviation <= 2
+        within = -5 <= deviation <= 5
         sign = "+" if deviation >= 0 else ""
         row_data = [
             o.order_id, o.broker_name, o.item_name, o.quantity_ordered,
