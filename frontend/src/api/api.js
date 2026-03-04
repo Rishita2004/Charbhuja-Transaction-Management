@@ -1,7 +1,7 @@
 import axios from "axios";
-
-const API_URL = "https://charbhuja-transaction-management.onrender.com";
-
+const API = axios.create({
+  baseURL: "https://charbhuja-transaction-management.onrender.com",
+});
 export const fetchOrders = (params) => API.get("/orders/", { params });
 export const createOrder = (data) => API.post("/orders/", data);
 export const updateOrder = (id, data) => API.put(`/orders/${id}`, data);
