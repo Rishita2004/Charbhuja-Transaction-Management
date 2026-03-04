@@ -39,7 +39,7 @@ def get_tolerance_log(db: Session = Depends(get_db)):
         if o.quantity_ordered == 0:
             continue
         deviation = ((o.quantity_sent - o.quantity_ordered) / o.quantity_ordered) * 100
-        within = -10 <= deviation <= 10
+        within = -2 <= deviation <= 2
         result.append(schemas.ToleranceLogEntry(
             order_id=o.order_id,
             broker=o.broker_name,
