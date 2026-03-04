@@ -33,13 +33,16 @@ def get_summary(db: Session = Depends(get_db)):
 
 @router.get("/tolerance-log", response_model=List[schemas.ToleranceLogEntry])
 def get_tolerance_log(db: Session = Depends(get_db)):
-    orders = db.query(models.Order).filter(models.Order.status == "Completed").all()
+    orders = db.query(models.Order).filter(
+        models.Order.status == "Completed",
+        models.Order.unit_type == "Ton"
+    ).all()
     result = []
     for o in orders:
         if o.quantity_ordered == 0:
             continue
         deviation = ((o.quantity_sent - o.quantity_ordered) / o.quantity_ordered) * 100
-        within = -2 <= deviation <= 2
+        within = -5 <= deviation <= 5
         result.append(schemas.ToleranceLogEntry(
             order_id=o.order_id,
             broker=o.broker_name,
@@ -113,12 +116,15 @@ def export_excel(db: Session = Depends(get_db)):
         cell.alignment = Alignment(horizontal="center")
         cell.border = border
 
-    tol_orders = db.query(models.Order).filter(models.Order.status == "Completed").all()
+    tol_orders = db.query(models.Order).filter(
+        models.Order.status == "Completed",
+        models.Order.unit_type == "Ton"
+    ).all()
     for row_idx, o in enumerate(tol_orders, 2):
         if o.quantity_ordered == 0:
             continue
         deviation = round(((o.quantity_sent - o.quantity_ordered) / o.quantity_ordered) * 100, 2)
-        within = -10 <= deviation <= 10
+        within = -2 <= deviation <= 2
         sign = "+" if deviation >= 0 else ""
         row_data = [
             o.order_id, o.broker_name, o.item_name, o.quantity_ordered,
